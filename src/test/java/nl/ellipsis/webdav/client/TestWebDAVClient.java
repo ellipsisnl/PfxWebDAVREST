@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.http.entity.ContentType;
 import org.apache.jackrabbit.webdav.DavException;
 import org.apache.log4j.BasicConfigurator;
 import org.junit.Before;
@@ -36,7 +37,6 @@ public class TestWebDAVClient extends WebDAVClientBaseTests {
 			String propPath = (env.containsKey(ENV_FILE_PROPERTIES) ? env.get(ENV_FILE_PROPERTIES) : DEFAULT_PROPERTIES);
 			properties = new Properties();
 			properties.load(new FileInputStream(absoluteBasePath + "/src/test/resources/" + propPath));
-			// "https://www.webdavserver.com/User0df0b98"
 			URI serverUri = new URI(properties.getProperty(PROP_SERVER_DOMAIN));
 			assertNotNull(serverUri);
 			client = new WebDAVClientImpl(properties.getProperty(PROP_SERVER_USER), properties.getProperty(PROP_SERVER_PWD), serverUri);
@@ -107,25 +107,25 @@ public class TestWebDAVClient extends WebDAVClientBaseTests {
 	}
 
 	@Test
-	public void testUploadAnDeleteResource() {
-		File f = new File(absoluteBasePath+"/PFX/data/sample.pdf");
+	public void testUploadAndDeleteResource() {
+		File f = new File(absoluteBasePath+"/test/data/sample.pdf");
 		assertTrue(f.getAbsolutePath(),f.exists());
 		
-		String path = properties.getProperty(PROP_FILE_PATH);
-		testPutResource(client,path,f,"application/pdf");
+		String path = properties.getProperty(PROP_FOLDER_PATH) + "/sample.pdf";
+		testPutResource(client,path,f,ContentType.create("application/pdf"));
 
 		testDeleteResource(client,path,true);
 	}
 
 	@Test
 	public void testUploadAndDeleteLargeResource() {
-		File f = new File(absoluteBasePath+"/PFX/data/BladeRunnerCD1.mkv");
+		File f = new File(absoluteBasePath+"/test/data/ofm_iam_generic_11.1.2.3.0_disk1_3of3.zip");
 		assertTrue(f.getAbsolutePath(),f.exists());
 		
-		String path = properties.getProperty(PROP_FILE_LARGE_PATH);
-		testPutLargeResource(client,path,f,"application/mkv");
+		String path = properties.getProperty(PROP_FOLDER_PATH) + "/ofm_iam_generic_11.1.2.3.0_disk1_3of3.zip";
+		testPutResource(client,path,f,ContentType.create("application/zip"));
 
-		testDeleteResource(client,path,true);
+		// testDeleteResource(client,path,true);
 	}
 
 	@Test

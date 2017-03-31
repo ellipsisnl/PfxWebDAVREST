@@ -1,9 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>PfxWebDAVREST</groupId>
-	<artifactId>PfxWebDAVREST</artifactId>
-	<version>0.1.0-SNAPSHOT</version>
+	<groupId>PfxWebdavREST</groupId>
+	<artifactId>PfxWebdavREST</artifactId>
+	<version>0.2.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>PfxWebdavREST</name>
 	<properties>
@@ -13,15 +13,15 @@
 	</properties>
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.6.1</version>
-				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
-				</configuration>
-			</plugin>
+		<plugin>
+			<groupId>org.apache.maven.plugins</groupId>
+			<artifactId>maven-compiler-plugin</artifactId>
+			<version>3.6.1</version>
+			<configuration>
+				<source>1.7</source>
+				<target>1.7</target>
+			</configuration>
+		</plugin>
 			<plugin>
 				<groupId>org.apache.cxf</groupId>
 				<artifactId>cxf-wadl2java-plugin</artifactId>
@@ -32,11 +32,14 @@
 						<phase>generate-sources</phase>
 						<configuration>
 							<wadlOptions>
+								<!-- <defaultOptions> <extraargs> <extraarg>-nexclude</extraarg> 
+									<extraarg>http://www.ellipsis.nl/PfxBaseService/v1</extraarg> </extraargs> 
+									</defaultOptions> -->
 								<wadlOption>
 									<wadl>${basedir}/src/main/resources/wadl/PfxWebdavREST.wadl</wadl>
 									<packagename>nl.ellipsis.pfxwebdav.rest.v1</packagename>
 									<extraargs>
-										<!-- <extraarg>-noTypes</extraarg> -->
+<!-- 										<extraarg>-noTypes</extraarg> -->
 										<extraarg>-javaDocs</extraarg>
 									</extraargs>
 								</wadlOption>
@@ -79,7 +82,7 @@
 		<dependency>
 			<groupId>org.apache.jackrabbit</groupId>
 			<artifactId>jackrabbit-webdav</artifactId>
-			<version>2.12.6</version>
+			<version>2.15.1</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
 		<dependency>
@@ -101,9 +104,9 @@
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
 		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>2.5</version>
+		    <groupId>commons-io</groupId>
+		    <artifactId>commons-io</artifactId>
+		    <version>2.5</version>
 		</dependency>
 		<!-- Logging Libraries -->
 		<dependency>

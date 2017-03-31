@@ -7,6 +7,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.http.entity.ContentType;
 import org.apache.jackrabbit.webdav.DavException;
 
 import nl.ellipsis.pfxwebdav.rest.v1.WebDAVResourceType;
@@ -82,8 +83,8 @@ public interface WebDAVClientAPI {
 	 * @throws IOException
 	 * @throws DavException
 	 */
-	public WebDAVResourceType putResource(URI uri, InputStream inputStream, String contentType) throws IOException, DavException;
-	public WebDAVResourceType putResource(URI uri, File file, String contentType) throws IOException, DavException;
+	public WebDAVResourceType putResource(URI uri, InputStream inputStream, long length, ContentType contentType) throws IOException, DavException;
+	public WebDAVResourceType putResource(URI uri, File file, ContentType contentType) throws IOException, DavException;
 
 	/**
 	 * Use WebDAV:PROPPATCH with processes instructions specified in the request body to set and/or remove properties 
@@ -104,12 +105,14 @@ public interface WebDAVClientAPI {
 	 * 
 	 * @param sourceUri	Relative URI on WebDAV server
 	 * @param targetUri	Relative URI on WebDAV server
+	 * @param overwrite true to overwrite the target URI
+	 * @param shallow true if not recursive-copy
 	 * @return WebDAVResource of the targetUri
 	 * 
 	 * @throws IOException
 	 * @throws DavException
 	 */
-	public WebDAVResourceType copyResource(URI sourceUri, URI targetUri) throws IOException, DavException;
+	public WebDAVResourceType copyResource(URI sourceUri, URI targetUri, boolean overwrite, boolean shallow) throws IOException, DavException;
 	
 	/**
 	 * Use WebDAV:COPY to move the source resource identified by the sourceUri to the destination resource identified by the targetUri. 

@@ -1,31 +1,31 @@
 package nl.ellipsis.webdav.client;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URI;
 
-import org.apache.commons.httpclient.HttpMethodBase;
-import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 public class WebDAVResourceStream {
 
 	private final URI uri;
-	private HttpMethodBase httpMethod;
+	private final CloseableHttpClient client;
+	private final HttpGet httpRequest;
 	private final InputStream inputStream;
 
 	/**
 	 * Constructor
 	 * 
 	 * @param relativeUri
+	 * @param client 
 	 * @param method 
 	 * @param inputStream
 	 */
-	public WebDAVResourceStream(final URI relativeUri, final HttpMethodBase method, final InputStream inputStream) {
+	public WebDAVResourceStream(final URI relativeUri, CloseableHttpClient client, final HttpGet request, final InputStream inputStream) {
 		this.uri = relativeUri;
-		this.httpMethod = method;
+		this.client = client;
+		this.httpRequest = request;
 		this.inputStream = inputStream;
 	}
 
@@ -33,7 +33,8 @@ public class WebDAVResourceStream {
 		if(inputStream!=null) {
 			inputStream.close();
 		}
-		httpMethod.releaseConnection();
+		httpRequest.releaseConnection();
+		client.close();
 	}
 
 	/**

@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -16,7 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.httpclient.HttpStatus;
+import org.apache.http.HttpStatus;
+import org.apache.http.entity.ContentType;
 import org.apache.jackrabbit.webdav.DavException;
 
 import com.google.gson.Gson;
@@ -102,6 +104,7 @@ public class WebDAVClientBaseTests {
 			// Java-7 paradigm
 			try (OutputStream os = new BufferedOutputStream(new FileOutputStream(newFilePath))) {
 				org.apache.commons.io.IOUtils.copyLarge(resource.getInputStream(),os);
+				os.flush();
 			} catch (IOException e) {
 	            e.printStackTrace();
 	            assertTrue(e.getMessage(),false);
@@ -141,24 +144,7 @@ public class WebDAVClientBaseTests {
 		}
 	}
 	
-	public static void testPutResource(WebDAVClientImpl client, String path, File file, String contentType) {
-		Gson gson = new Gson();
-		try (FileInputStream fis = new FileInputStream(file)) {
-			URI pfxUri = new URI(path);
-			assertNotNull(pfxUri);
-
-			WebDAVResourceType resource = client.putResource(pfxUri,fis,contentType);
-
-			assertNotNull(resource);
-			System.out.println(path+": "+gson.toJson(resource));
-		} catch(DavException e) {
-			assertTrue(e.getMessage()+" ["+e.getErrorCode()+"]",false);
-		} catch(Exception e) {
-			assertTrue(e.getMessage(),false);
-		}
-	}
-	
-	public static void testPutLargeResource(WebDAVClientImpl client, String path, File file, String contentType) {
+	public static void testPutResource(WebDAVClientImpl client, String path, File file, ContentType contentType) {
 		Gson gson = new Gson();
 		try {
 			URI pfxUri = new URI(path);
@@ -174,7 +160,25 @@ public class WebDAVClientBaseTests {
 			assertTrue(e.getMessage(),false);
 		}
 	}
+	
+	public static void testPutLargeResource(WebDAVClientImpl client, String path, File file, ContentType contentType) {
+		Gson gson = new Gson();
+		try {
+			URI pfxUri = new URI(path);
+			assertNotNull(pfxUri);
+			InputStream is = new FileInputStream(file);
 
+			WebDAVResourceType resource = client.putResource(pfxUri,is,file.length(),contentType);
+
+			assertNotNull(resource);
+			System.out.println(path+": "+gson.toJson(resource));
+		} catch(DavException e) {
+			assertTrue(e.getMessage()+" ["+e.getErrorCode()+"]",false);
+		} catch(Exception e) {
+			assertTrue(e.getMessage(),false);
+		}
+	}
+	
 	public static void testSetProperties(WebDAVClientImpl client, String path, Map<String,Object> propertyMap) {
 		Gson gson = new Gson();
 		try {

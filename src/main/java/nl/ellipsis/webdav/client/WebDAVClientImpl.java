@@ -11,34 +11,40 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.commons.httpclient.Credentials;
-import org.apache.commons.httpclient.HostConfiguration;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpConnectionManager;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
-import org.apache.commons.httpclient.UsernamePasswordCredentials;
-import org.apache.commons.httpclient.auth.AuthScope;
-import org.apache.commons.httpclient.params.HttpConnectionManagerParams;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.httpclient.methods.FileRequestEntity;
-import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.httpclient.methods.InputStreamRequestEntity;
-import org.apache.commons.httpclient.methods.RequestEntity;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.conn.HttpClientConnectionManager;
+import org.apache.http.entity.BufferedHttpEntity;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.FileEntity;
+import org.apache.http.entity.InputStreamEntity;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.io.ChunkedInputStream;
+import org.apache.http.params.HttpConnectionParams;
 import org.apache.jackrabbit.webdav.DavConstants;
 import org.apache.jackrabbit.webdav.DavException;
 import org.apache.jackrabbit.webdav.MultiStatus;
 import org.apache.jackrabbit.webdav.MultiStatusResponse;
-import org.apache.jackrabbit.webdav.client.methods.CopyMethod;
-import org.apache.jackrabbit.webdav.client.methods.DavMethod;
-import org.apache.jackrabbit.webdav.client.methods.DeleteMethod;
-import org.apache.jackrabbit.webdav.client.methods.LockMethod;
-import org.apache.jackrabbit.webdav.client.methods.MkColMethod;
-import org.apache.jackrabbit.webdav.client.methods.MoveMethod;
-import org.apache.jackrabbit.webdav.client.methods.PropFindMethod;
-import org.apache.jackrabbit.webdav.client.methods.PropPatchMethod;
-import org.apache.jackrabbit.webdav.client.methods.PutMethod;
-import org.apache.jackrabbit.webdav.client.methods.UnLockMethod;
+import org.apache.jackrabbit.webdav.client.methods.BaseDavRequest;
+import org.apache.jackrabbit.webdav.client.methods.HttpCopy;
+import org.apache.jackrabbit.webdav.client.methods.HttpDelete;
+import org.apache.jackrabbit.webdav.client.methods.HttpLock;
+import org.apache.jackrabbit.webdav.client.methods.HttpMkcol;
+import org.apache.jackrabbit.webdav.client.methods.HttpMove;
+import org.apache.jackrabbit.webdav.client.methods.HttpPropfind;
+import org.apache.jackrabbit.webdav.client.methods.HttpProppatch;
+import org.apache.jackrabbit.webdav.client.methods.HttpUnlock;
 import org.apache.jackrabbit.webdav.property.DavProperty;
 import org.apache.jackrabbit.webdav.property.DavPropertyIterator;
 import org.apache.jackrabbit.webdav.property.DavPropertySet;
@@ -78,16 +84,23 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 		this.serverUri = serverUri;
 	}
 	
-	public WebDAVResourceType copyResource(URI sourceUri, URI targetUri) throws IOException, DavException {
+	public WebDAVResourceType copyResource(URI sourceUri, URI targetUri, boolean overwrite, boolean shallow) throws IOException, DavException {
 		WebDAVResourceType resource = null;
 		if(sourceUri!=null && targetUri!=null) {
-			HttpClient client = getHttpClient(user,password,sourceUri);
-			// continue with copy
-			CopyMethod httpMethod = new CopyMethod(getAbsoluteURI(sourceUri).toString(),getAbsoluteURI(targetUri).toString(),true);
-			client.executeMethod(httpMethod);
-			// get resource, error is thrown if it doesn't exist
-			resource = getResourceProperties(client,targetUri);
-			httpMethod.releaseConnection();
+			CloseableHttpClient client = getHttpClient(user,password,sourceUri);
+			try {
+				// continue with copy
+				HttpCopy httpMethod = new HttpCopy(getAbsoluteURI(sourceUri).toString(),getAbsoluteURI(targetUri).toString(),overwrite,shallow);
+				CloseableHttpResponse response = client.execute(httpMethod);
+				try {
+					// get resource, error is thrown if it doesn't exist
+					resource = getResourceProperties(client,targetUri);
+				} finally {
+					response.close();
+				}
+			} finally {
+				client.close();
+			}
 		}
 		return resource;
 	}
@@ -95,13 +108,20 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	public WebDAVResourceType moveResource(URI sourceUri, URI targetUri) throws IOException, DavException {
 		WebDAVResourceType resource = null;
 		if(sourceUri!=null && targetUri!=null) {
-			HttpClient client = getHttpClient(user,password,sourceUri);
-			// continue with move
-			MoveMethod httpMethod = new MoveMethod(getAbsoluteURI(sourceUri).toString(),getAbsoluteURI(targetUri).toString(),true);
-			client.executeMethod(httpMethod);
-			// get resource, error is thrown if it doesn't exist
-			resource = getResourceProperties(client,targetUri);
-			httpMethod.releaseConnection();
+			CloseableHttpClient client = getHttpClient(user,password,sourceUri);
+			try {
+				// continue with move
+				HttpMove httpMethod = new HttpMove(getAbsoluteURI(sourceUri).toString(),getAbsoluteURI(targetUri).toString(),true);
+				CloseableHttpResponse response = client.execute(httpMethod);
+				try {
+					// get resource, error is thrown if it doesn't exist
+					resource = getResourceProperties(client,targetUri);
+				} finally {
+					response.close();
+				}
+			} finally {
+				client.close();
+			}
 		}
 		return resource;
 	}
@@ -110,20 +130,24 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	public WebDAVResourceType createCollection(URI relativeUri) throws IOException, DavException {
 		WebDAVResourceType resource = null;
 		if(relativeUri!=null) {
-			HttpClient client = getHttpClient(user,password,relativeUri);
-			// let's just walk to the ancestors uri's
-			String[] parts = relativeUri.toString().split(PfxDocumentConstants.URI_SEPARATOR);
-			String ancestorUri = "";
-			for(int i=0; i<parts.length; i++) {
-				String part = parts[i];
-				if(!StringUtils.isEmpty(part)) {
-					ancestorUri = ancestorUri + PfxDocumentConstants.URI_SEPARATOR + part;
-					try {
-						resource = getCollection(client,new URI(ancestorUri),true);
-					} catch (URISyntaxException e) {
-						throw new DavException(HttpStatus.SC_INTERNAL_SERVER_ERROR, e);
+			CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+			try {
+				// let's just walk to the ancestors uri's
+				String[] parts = relativeUri.toString().split(PfxDocumentConstants.URI_SEPARATOR);
+				String ancestorUri = "";
+				for(int i=0; i<parts.length; i++) {
+					String part = parts[i];
+					if(!StringUtils.isEmpty(part)) {
+						ancestorUri = ancestorUri + PfxDocumentConstants.URI_SEPARATOR + part;
+						try {
+							resource = getCollection(client,new URI(ancestorUri),true);
+						} catch (URISyntaxException e) {
+							throw new DavException(HttpStatus.SC_INTERNAL_SERVER_ERROR, e);
+						}
 					}
 				}
+			} finally {
+				client.close();
 			}
 		}
 		return resource;
@@ -132,13 +156,17 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	public WebDAVResourceType deleteResource(URI relativeUri) throws IOException, DavException {
 		WebDAVResourceType resource = null;
 		if(relativeUri!=null) {
-			HttpClient client = getHttpClient(user,password,relativeUri);
-			// get resource, error is thrown if it doesn't exist
-			resource = getResourceProperties(client,relativeUri);
-			// continue with deletion
-			DeleteMethod httpMethod = new DeleteMethod(getAbsoluteURI(relativeUri).toString());
-			client.executeMethod(httpMethod);
-			httpMethod.releaseConnection();
+			CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+			try {
+				// get resource, error is thrown if it doesn't exist
+				resource = getResourceProperties(client,relativeUri);
+				// continue with deletion
+				HttpDelete httpMethod = new HttpDelete(getAbsoluteURI(relativeUri).toString());
+				CloseableHttpResponse response = client.execute(httpMethod);
+				response.close();
+			} finally {
+				client.close();
+			}
 		}
 		return resource;
 	}
@@ -152,13 +180,29 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	 * @throws IOException 
 	 */
 	public List<WebDAVResourceType> getChildResources(URI relativeUri) throws IOException, DavException  {
-		HttpClient client = getHttpClient(user,password,relativeUri);
-		return getCollectionProperties(client,relativeUri,DavConstants.DEPTH_1);
+		List<WebDAVResourceType> resources = new ArrayList<WebDAVResourceType>();
+		if(relativeUri!=null) {
+			CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+			try {
+				resources = getCollectionProperties(client,relativeUri,DavConstants.DEPTH_1);
+			} finally {
+				client.close();
+			}
+		}
+		return resources;
 	}
 
 	public WebDAVResourceType getResource(URI relativeUri) throws IOException, DavException  {
-		HttpClient client = getHttpClient(user,password,relativeUri);
-		return getResourceProperties(client,relativeUri);
+		WebDAVResourceType resource = null;
+		if(relativeUri!=null) {
+			CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+			try {
+				resource = getResourceProperties(client,relativeUri);
+			} finally {
+				client.close();
+			}
+		}
+		return resource;
 	}
 
 	/**
@@ -170,27 +214,35 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	 * @throws Exception 
 	 */
 	public WebDAVResourceStream getResourceStream(URI relativeUri) throws IOException, DavException {
-		WebDAVResourceStream resource = null;
-		HttpClient client = getHttpClient(user,password,relativeUri);
-		GetMethod method = new GetMethod(getAbsoluteURI(relativeUri).toString());
-		client.executeMethod(method);
-		if (method.getStatusCode() == HttpStatus.SC_OK) {
-			InputStream stream = method.getResponseBodyAsStream();
-			resource = new WebDAVResourceStream(relativeUri,method,stream);
+		WebDAVResourceStream resourceStream = null;
+		CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+		HttpGet httpMethod = new HttpGet(getAbsoluteURI(relativeUri).toString());
+		CloseableHttpResponse response = client.execute(httpMethod);
+		if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+			HttpEntity entity = response.getEntity();
+			InputStream stream = entity.getContent();
+			resourceStream = new WebDAVResourceStream(relativeUri,client,httpMethod,stream);
 		}
-		return resource;
+		return resourceStream;
 	}
 
 	public WebDAVResourceType lockResource(URI uri, String lockToken, int timeout) throws IOException, DavException {
 		WebDAVResourceType resource = null;
 		if(uri!=null) {
-			HttpClient client = getHttpClient(user,password,uri);
-			// continue with move
-			LockMethod httpMethod = new LockMethod(getAbsoluteURI(uri).toString(), timeout, new String[]{lockToken});
-			client.executeMethod(httpMethod);
-			// get resource, error is thrown if it doesn't exist
-			resource = getResourceProperties(client,uri);
-			httpMethod.releaseConnection();
+			CloseableHttpClient client = getHttpClient(user,password,uri);
+			try {
+				// continue with move
+				HttpLock httpMethod = new HttpLock(getAbsoluteURI(uri).toString(),timeout,new String[]{lockToken});
+				CloseableHttpResponse response = client.execute(httpMethod);
+				try {
+					// get resource, error is thrown if it doesn't exist
+					resource = getResourceProperties(client,uri);
+				} finally {
+					response.close();
+				}
+			} finally {
+				client.close();
+			}
 		}
 		return resource;
 	}
@@ -199,51 +251,63 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	public WebDAVResourceType setProperties(URI relativeUri, Map<String,Object> propertyMap) throws IOException, DavException  {
 		WebDAVResourceType resource = null;
 		if(relativeUri!=null && propertyMap!=null &&!propertyMap.isEmpty()) {
-			HttpClient client = getHttpClient(user,password,relativeUri);
-		
-			
-			PropPatchMethod httpMethod = new PropPatchMethod(getAbsoluteURI(relativeUri).toString(),getWebDAVPropertyList(propertyMap));
-		
-			client.executeMethod(httpMethod);
-			httpMethod.releaseConnection();
-			
-			resource = getResource(relativeUri);
+			CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+			try {
+				HttpProppatch httpMethod = new HttpProppatch(getAbsoluteURI(relativeUri).toString(),getWebDAVPropertyList(propertyMap));
+				CloseableHttpResponse response = client.execute(httpMethod);
+				response.close();
+				resource = getResourceProperties(client,relativeUri);
+			} finally {
+				client.close();
+			}
 		}
     	return resource;
 	}
 
-	public WebDAVResourceType putResource(URI relativeUri, InputStream inputStream, String contentType) throws IOException, DavException  {
+	/**
+	 * InputStreamEntity is NOT repeatable
+	 */
+	public WebDAVResourceType putResource(URI relativeUri, InputStream inputStream, long length, ContentType contentType) throws IOException, DavException  {
 		WebDAVResourceType resource = null;
 		if(relativeUri!=null) {
-			HttpClient client = getHttpClient(user,password,relativeUri);
-		
-			PutMethod httpMethod = new PutMethod(getAbsoluteURI(relativeUri).toString());
-		
-			// RequestEntity requestEntity = new InputStreamRequestEntity(inputStream, contentType); 
-			InputStreamRequestEntity requestEntity = new InputStreamRequestEntity(inputStream, contentType); 
-			httpMethod.setRequestEntity(requestEntity);
-			client.executeMethod(httpMethod);
-			httpMethod.releaseConnection();
-			
-			resource = getResource(relativeUri);
+			CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+			try {
+				HttpPut httpMethod = new HttpPut(getAbsoluteURI(relativeUri).toString());
+				InputStreamEntity entity = new InputStreamEntity(inputStream, length, contentType);
+				entity.setChunked(true);
+				httpMethod.setEntity(entity);
+				CloseableHttpResponse response = client.execute(httpMethod);
+				response.close();
+				resource = getResourceProperties(client,relativeUri);
+			} finally {
+				client.close();
+			}
 		}
     	return resource;
 	}
 
-	public WebDAVResourceType putResource(URI relativeUri, File file, String contentType) throws IOException, DavException  {
+	/**
+	 * FileEntity is repeatable
+	 * 
+	 */
+	public WebDAVResourceType putResource(URI relativeUri, File file, ContentType contentType) throws IOException, DavException  {
 		WebDAVResourceType resource = null;
 		if(relativeUri!=null) {
-			HttpClient client = getHttpClient(user,password,relativeUri);
-		
-			PutMethod httpMethod = new PutMethod(getAbsoluteURI(relativeUri).toString());
-		
-			// RequestEntity requestEntity = new InputStreamRequestEntity(inputStream, contentType); 
-			RequestEntity requestEntity = new FileRequestEntity(file, contentType); 
-			httpMethod.setRequestEntity(requestEntity);
-			client.executeMethod(httpMethod);
-			httpMethod.releaseConnection();
-			
-			resource = getResource(relativeUri);
+			CloseableHttpClient client = getHttpClient(user,password,relativeUri);
+			try {
+				HttpPut httpMethod = new HttpPut(getAbsoluteURI(relativeUri).toString());
+				
+				// RequestEntity requestEntity = new InputStreamRequestEntity(inputStream, contentType); 
+				FileEntity requestEntity = new FileEntity(file, contentType); 
+				BufferedHttpEntity bhe = new BufferedHttpEntity(requestEntity); 
+				httpMethod.setEntity(bhe);
+				
+				CloseableHttpResponse response = client.execute(httpMethod);
+				response.close();
+				resource = getResourceProperties(client,relativeUri);
+			} finally {
+				client.close();
+			}
 		}
     	return resource;
 	}
@@ -251,13 +315,20 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	public WebDAVResourceType unlockResource(URI uri, String lockToken) throws IOException, DavException {
 		WebDAVResourceType resource = null;
 		if(uri!=null) {
-			HttpClient client = getHttpClient(user,password,uri);
-			// continue with move
-			UnLockMethod httpMethod = new UnLockMethod(getAbsoluteURI(uri).toString(), lockToken);
-			client.executeMethod(httpMethod);
-			// get resource, error is thrown if it doesn't exist
-			resource = getResourceProperties(client,uri);
-			httpMethod.releaseConnection();
+			CloseableHttpClient client = getHttpClient(user,password,uri);
+			try {
+				// continue with move
+				HttpUnlock httpMethod = new HttpUnlock(getAbsoluteURI(uri).toString(),lockToken);
+				CloseableHttpResponse response = client.execute(httpMethod);
+				try {
+					// get resource, error is thrown if it doesn't exist
+					resource = getResourceProperties(client,uri);
+				} finally {
+					response.close();
+				}
+			} finally {
+				client.close();
+			}
 		}
 		return resource;
 	}
@@ -319,27 +390,7 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 		}
 	}
 
-	/**
-	 * 
-	 * @param client
-	 * @param folderResources
-	 * @param relativeUri
-	 * @param createIfNotExists
-	 * @return
-	 * @throws IOException
-	 * @throws DavException
-	 * 
-	 * @deprecated
-	 */
-	private WebDAVResourceType _getCollection(HttpClient client, List<WebDAVResourceType> folderResources, URI relativeUri, boolean createIfNotExists) throws IOException, DavException {
-		WebDAVResourceType resource = getWebDAVResource(folderResources,relativeUri);
-		if(resource == null && createIfNotExists) {
-			resource = getCollection(client,relativeUri,createIfNotExists);
-		}		
-		return resource;
-	}
-	
-	private WebDAVResourceType getCollection(HttpClient client, URI relativeUri, boolean createIfNotExists) throws IOException, DavException {
+	private WebDAVResourceType getCollection(CloseableHttpClient client, URI relativeUri, boolean createIfNotExists) throws IOException, DavException {
 		WebDAVResourceType resource = null;
 		if(relativeUri != null) {
 			// first check if collection already exists
@@ -352,12 +403,15 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 				}
 			}
 			if(resource==null && createIfNotExists) {
-				DavMethod method = new MkColMethod(getAbsoluteURI(relativeUri).toString());
-				client.executeMethod(method);
-				method.releaseConnection();
-				// then propfind if no error has been thrown
-				resource = getResource(relativeUri);
-				logger.info("collection "+relativeUri.toString() + " has been created");
+				BaseDavRequest method = new HttpMkcol(getAbsoluteURI(relativeUri).toString());
+				CloseableHttpResponse response = client.execute(method);
+				try {
+					// then propfind if no error has been thrown
+					resource = getResource(relativeUri);
+					logger.info("collection "+relativeUri.toString() + " has been created");
+				} finally {
+					response.close();
+				}
 			}
 		}		
 		return resource;
@@ -373,59 +427,57 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	 * @throws DavException 
 	 * @throws Exception 
 	 */
-	private List<WebDAVResourceType> getCollectionProperties(HttpClient client, URI relativeUri, int depth) throws IOException, DavException {
+	private List<WebDAVResourceType> getCollectionProperties(CloseableHttpClient client, URI relativeUri, int depth) throws IOException, DavException {
 		List<WebDAVResourceType> resources = new ArrayList<WebDAVResourceType>();
 	
-		DavMethod method = new PropFindMethod(getAbsoluteURI(relativeUri).toString(), DavConstants.PROPFIND_ALL_PROP, depth);
-		client.executeMethod(method);
-		method.releaseConnection();
+		HttpPropfind method = new HttpPropfind(getAbsoluteURI(relativeUri).toString(), DavConstants.PROPFIND_ALL_PROP, depth);
+		CloseableHttpResponse httpResponse = client.execute(method);
+		try {
+			MultiStatus multiStatus = method.getResponseBodyAsMultiStatus(httpResponse);
+			MultiStatusResponse[] responses = multiStatus.getResponses();
+			MultiStatusResponse response;
 		
-		MultiStatus multiStatus = method.getResponseBodyAsMultiStatus();
-	
-		MultiStatusResponse[] responses = multiStatus.getResponses();
-		MultiStatusResponse response;
-	
-		int status = HttpStatus.SC_OK; 
-		for (int i = 0; i < responses.length; i++) {
-			response = responses[i];
-			
-			// href = mountpoint from documentService + relativePath
-			String href = response.getHref();
-	
-			// Ignore the current directory
-			if (assertResourcePathEquals(relativeUri,href) && depth > 0) {
-				continue;
-			}
-	
-			// prepare json container
-			WebDAVResourceType resource = getWebDAVResource(href,response.getProperties(status));
-			resources.add(resource);
-			Collections.sort(resources, new Comparator<WebDAVResourceType>() {
-	            public int compare(WebDAVResourceType lhs, WebDAVResourceType rhs) {
-	                return lhs.getDisplayName().compareToIgnoreCase(rhs.getDisplayName());
-	            }
-	        });
+			int status = HttpStatus.SC_OK; 
+			for (int i = 0; i < responses.length; i++) {
+				response = responses[i];
+				
+				// href = mountpoint from documentService + relativePath
+				String href = response.getHref();
+		
+				// Ignore the current directory
+				if (assertResourcePathEquals(relativeUri,href) && depth > 0) {
+					continue;
+				}
+		
+				// prepare json container
+				WebDAVResourceType resource = getWebDAVResource(href,response.getProperties(status));
+				resources.add(resource);
+				Collections.sort(resources, new Comparator<WebDAVResourceType>() {
+		            public int compare(WebDAVResourceType lhs, WebDAVResourceType rhs) {
+		                return lhs.getDisplayName().compareToIgnoreCase(rhs.getDisplayName());
+		            }
+		        });
+			}			
+		} finally {
+			httpResponse.close();
 		}
 		return resources;
 	}
 
-	private HttpClient getHttpClient(String user, String password, URI relativeUri) throws DavException {
-		HostConfiguration hostConfig = new HostConfiguration();
-		hostConfig.setHost(getAbsoluteURI(relativeUri).toString());
-	
-		HttpConnectionManager connectionManager = new MultiThreadedHttpConnectionManager();
+	private CloseableHttpClient getHttpClient(String user, String password, URI relativeUri) throws DavException {
+		URI serverUri = getAbsoluteURI(relativeUri);
+		CloseableHttpClient client = null;
 		
-		HttpConnectionManagerParams params = new HttpConnectionManagerParams();
-		params.setMaxConnectionsPerHost(hostConfig, MAX_HOST_CONNECTIONS);
-		connectionManager.setParams(params);
-	
-		HttpClient client = new HttpClient(connectionManager);
-		
-		client.setHostConfiguration(hostConfig);
-	
 		if(user!=null) {
-			Credentials creds = new UsernamePasswordCredentials(user, password);
-			client.getState().setCredentials(AuthScope.ANY, creds);
+			CredentialsProvider credsProvider = new BasicCredentialsProvider();
+			credsProvider.setCredentials(
+	                new AuthScope(serverUri.getHost(), serverUri.getPort()),
+	                new UsernamePasswordCredentials(user, password));
+			client = HttpClients.custom()
+	                .setDefaultCredentialsProvider(credsProvider)
+	                .build();
+		} else {
+			client = HttpClients.custom().build();
 		}
 		return client;
 	}
@@ -457,7 +509,7 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 		}
 	}
 
-	private WebDAVResourceType getResourceProperties(HttpClient client, URI relativeUri) throws IOException,DavException {
+	private WebDAVResourceType getResourceProperties(CloseableHttpClient client, URI relativeUri) throws IOException,DavException {
 		// let's do a generic propfind with depth 0
 		List<WebDAVResourceType> resources = getCollectionProperties(client,relativeUri,DavConstants.DEPTH_0);
 		// we get either a response with one resource-item or a NOT-FOUND exception
@@ -469,41 +521,6 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 		}
 		return resources.get(0);
 	
-	}
-
-	/**
-	 * 
-	 * @param client
-	 * @param uri
-	 * @param createIfNotExist
-	 * @return
-	 * @throws IOException
-	 * @throws DavException
-	 * 
-	 * @deprecated
-	 */
-	private List<WebDAVResourceType> _getChildResources(HttpClient client, URI uri, boolean createIfNotExist) throws IOException, DavException {
-		logger.debug("getChildResources for "+uri.toString());
-		List<WebDAVResourceType> childResources = null;
-		List<WebDAVResourceType> siblingResources = null;
-		try {
-			childResources = getChildResources(uri);
-		} catch(DavException e) {
-			// parent collection not found, therefore up one level
-			if (HttpStatus.SC_NOT_FOUND == e.getErrorCode() && createIfNotExist) {
-				siblingResources = _getChildResources(client, getParentURI(uri), createIfNotExist);
-			} else {
-				throw e;
-			}
-		}
-		// if relativeUri is not member of parent collection, createIfNotExist
-		if(siblingResources!=null && createIfNotExist && !isMemberOf(siblingResources,uri)) {
-			// create the collection
-			WebDAVResourceType selfResource = getCollection(client,uri,createIfNotExist);
-			siblingResources.add(selfResource);
-			childResources = new ArrayList<WebDAVResourceType>();
-		}
-		return childResources;
 	}
 
 	@SuppressWarnings("rawtypes")
