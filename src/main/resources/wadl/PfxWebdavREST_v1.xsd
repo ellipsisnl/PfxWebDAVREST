@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema 
+	xmlns:pfxdav="http://www.ellipsis.nl/PfxWebdav/REST/v1/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+	targetNamespace="http://www.ellipsis.nl/PfxWebdav/REST/v1/"
+	version="1.0">
+	
+	<xsd:element name="GetResourcesResponse" type="pfxdav:WebDAVResources.Type"/>
+	<xsd:element name="PutResourceResponse" type="pfxdav:WebDAVResource.Type"/>
+	
+	<xsd:complexType name="WebDAVProperty.Type">
+		<xsd:sequence>
+			<xsd:element name="name" type="xsd:string" />
+			<xsd:element name="value" type="xsd:string" />
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="WebDAVResources.Type">
+		<xsd:sequence minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="resources" type="pfxdav:WebDAVResource.Type" />
+		</xsd:sequence>
+	</xsd:complexType>
+	
+	<xsd:complexType name="WebDAVResource.Type">
+		<xsd:sequence>
+			<!-- Webdav property names as defined by RFC 2518 -->
+			<xsd:element name="creationDate" type="xsd:dateTime" />
+			<xsd:element name="displayName" type="xsd:string"/>
+			<xsd:element name="contentLanguage" type="xsd:string" minOccurs="0"/>
+			<xsd:element name="contentLength" type="xsd:string" minOccurs="0"/>
+			<xsd:element name="contentType" type="xsd:string" minOccurs="0"/>
+			<xsd:element name="etag" type="xsd:string" minOccurs="0"/>
+			<xsd:element name="lastModified" type="xsd:dateTime" minOccurs="0"/>
+			<xsd:element name="lockDiscovery" type="xsd:string" minOccurs="0"/>
+			<xsd:element name="resourceType" type="xsd:string" minOccurs="0"/>
+			<xsd:element name="source" type="xsd:string" minOccurs="0"/>
+			<xsd:element name="supportedLock" type="xsd:string" minOccurs="0"/>
+			<!-- Extra webdav properties -->
+			<xsd:element name="href" type="xsd:string"/>
+			<xsd:element name="uri" type="xsd:string"/>
+			<xsd:element name="properties" type="pfxdav:WebDAVProperty.Type" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="collection" use="optional" type="xsd:boolean" default="false"/>
+	</xsd:complexType>
+	
+</xsd:schema>

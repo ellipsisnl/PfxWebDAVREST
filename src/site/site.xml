@@ -1,0 +1,8 @@
+<project>
+	<body>
+		<menu name="Overview">
+			<menu ref="modules" />
+			<menu ref="reports" />
+		</menu>
+	</body>
+</project>
