@@ -1,5 +1,6 @@
 package nl.ellipsis.webdav.client;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,6 +12,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
@@ -276,6 +279,7 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 				InputStreamEntity entity = new InputStreamEntity(inputStream, length, contentType);
 				entity.setChunked(true);
 				httpMethod.setEntity(entity);
+				
 				CloseableHttpResponse response = client.execute(httpMethod);
 				response.close();
 				resource = getResourceProperties(client,relativeUri);
@@ -301,6 +305,11 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 				FileEntity requestEntity = new FileEntity(file, contentType); 
 				BufferedHttpEntity bhe = new BufferedHttpEntity(requestEntity); 
 				httpMethod.setEntity(bhe);
+				
+/*				ByteArrayInputStream buffer = new ByteArrayInputStream(FileUtils.readFileToByteArray(file));
+				InputStreamEntity i = new InputStreamEntity(buffer, buffer.available());
+				BufferedHttpEntity entity = new BufferedHttpEntity(i);
+				httpMethod.setEntity(entity);*/
 				
 				CloseableHttpResponse response = client.execute(httpMethod);
 				response.close();
@@ -474,10 +483,13 @@ public class WebDAVClientImpl implements WebDAVClientAPI {
 	                new AuthScope(serverUri.getHost(), serverUri.getPort()),
 	                new UsernamePasswordCredentials(user, password));
 			client = HttpClients.custom()
+					.setMaxConnTotal(MAX_HOST_CONNECTIONS)
 	                .setDefaultCredentialsProvider(credsProvider)
 	                .build();
 		} else {
-			client = HttpClients.custom().build();
+			client = HttpClients.custom()
+					.setMaxConnTotal(MAX_HOST_CONNECTIONS)
+					.build();
 		}
 		return client;
 	}

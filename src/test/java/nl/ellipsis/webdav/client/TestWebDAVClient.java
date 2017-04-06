@@ -119,11 +119,11 @@ public class TestWebDAVClient extends WebDAVClientBaseTests {
 
 	@Test
 	public void testUploadAndDeleteLargeResource() {
-		File f = new File(absoluteBasePath+"/test/data/ofm_iam_generic_11.1.2.3.0_disk1_3of3.zip");
+		File f = new File(absoluteBasePath+"/test/data/BladeRunnerCD1.mkv");
 		assertTrue(f.getAbsolutePath(),f.exists());
 		
-		String path = properties.getProperty(PROP_FOLDER_PATH) + "/ofm_iam_generic_11.1.2.3.0_disk1_3of3.zip";
-		testPutResource(client,path,f,ContentType.create("application/zip"));
+		String path = properties.getProperty(PROP_FOLDER_PATH) + "/BladeRunnerCD1.mkv";
+		testPutLargeResource(client,path,f,ContentType.create("application/mkv"));
 
 		// testDeleteResource(client,path,true);
 	}

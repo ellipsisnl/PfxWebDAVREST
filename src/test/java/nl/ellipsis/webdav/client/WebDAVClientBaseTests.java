@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import org.apache.http.HttpStatus;
@@ -22,6 +23,8 @@ import org.apache.http.entity.ContentType;
 import org.apache.jackrabbit.webdav.DavException;
 
 import com.google.gson.Gson;
+
+import nl.ellipsis.pfxwebdav.rest.v1.WebDAVPropertyType;
 import nl.ellipsis.pfxwebdav.rest.v1.WebDAVResourceType;
 import nl.ellipsis.webdav.client.WebDAVClientImpl;
 import nl.ellipsis.webdav.client.WebDAVResourceStream;
@@ -188,12 +191,39 @@ public class WebDAVClientBaseTests {
 
 			assertNotNull(resource);
 			System.out.println(path+": "+gson.toJson(resource));
+			
+			assertProperties(resource,propertyMap);
+			
 		} catch(DavException e) {
 			assertTrue(e.getMessage()+" ["+e.getErrorCode()+"]",false);
 		} catch(IOException e) {
 			assertTrue(e.getMessage(),false);
 		} catch (URISyntaxException e) {
 			assertTrue(e.getMessage(),false);
+		}
+	}
+
+	private static void assertProperties(WebDAVResourceType resource, Map<String, Object> propertyMap) {
+		if(resource!=null && propertyMap!=null) {
+			for (Entry<String, Object> e : propertyMap.entrySet()) {
+				assertProperty(resource.getProperties(),e.getKey(),e.getValue());
+			}
+		}
+	}
+
+	private static void assertProperty(List<WebDAVPropertyType> properties, String key, Object value) {
+		if(key!=null) {
+			assertNotNull(properties);
+			WebDAVPropertyType property = null;
+			for(WebDAVPropertyType p : properties) {
+				if(p.getName().equals(key)) {
+					property = p;
+					break;
+				}
+			}
+			assertNotNull("Property with key '"+key+"' could not be found",property);
+			String sv = value.toString();
+			assertTrue(property.getValue().contains(sv));
 		}
 	}
 
