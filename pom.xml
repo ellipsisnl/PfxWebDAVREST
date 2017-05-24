@@ -36,7 +36,7 @@
 									<extraarg>http://www.ellipsis.nl/PfxBaseService/v1</extraarg> </extraargs> 
 									</defaultOptions> -->
 								<wadlOption>
-									<wadl>${basedir}/src/main/resources/wadl/PfxWebdavREST.wadl</wadl>
+									<wadl>${basedir}/src/main/resources/wadl/PfxWebDAVREST.wadl</wadl>
 									<packagename>nl.ellipsis.pfxwebdav.rest.v1</packagename>
 									<extraargs>
 <!-- 										<extraarg>-noTypes</extraarg> -->

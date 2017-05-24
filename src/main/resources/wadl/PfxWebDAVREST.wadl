@@ -1,12 +1,12 @@
 <application xmlns="http://wadl.dev.java.net/2009/02"
-	xmlns:pfxdav="http://www.ellipsis.nl/PfxWebdav/REST/v1/"
+	xmlns:pfxdav="http://www.ellipsis.nl/PfxWebDAV/REST/v1/"
 	xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
 >
 	<grammars>
-		<include href="./PfxWebdavREST_v1.xsd"/>
+		<include href="./PfxWebDAVREST_v1.xsd"/> 
 	</grammars>
 	<resources base="http://localhost:8080/">
-		<resource path="/PfxWebdavREST" id="PfxWebdavRESTAPI">
+		<resource path="/PfxWebDAVREST" id="PfxWebDAVRESTAPI">
 			<resource path="/resources">
 				<param name="uri" style="query" type="xsd:string"/>
 				<method name="GET" id="getResources">
